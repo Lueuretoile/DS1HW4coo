@@ -214,24 +214,23 @@ void task1() {
     return;
   }
 
-  // 第一次讀取 計算資料筆數 (Two-pass approach)
+  // 第一次讀取 計算資料筆數
   string headerLine;
   getline(inFile, headerLine); // 跳過第一行標題
 
   int totalOrders = 0;
   int temp; 
-  // 嘗試讀取每一行的四個整數，讀成功一次計數加一
+  // 嘗試讀取每一行的四個整數讀成功一次計數加一
   while (inFile >> temp >> temp >> temp >> temp) {
     totalOrders++;
   }
 
-  // 配置動態空間
   Order* orderList = new Order[totalOrders];
 
   // 第二次讀取真正讀入資料
   inFile.clear();
   inFile.seekg(0); // 游標回到檔案開頭
-  getline(inFile, headerLine); // 再次跳過標題
+  getline(inFile, headerLine); // 跳過標題
 
   for (int i = 0; i < totalOrders; i++) {
     inFile >> orderList[i].OID 
