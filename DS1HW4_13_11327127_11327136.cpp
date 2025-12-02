@@ -347,6 +347,7 @@ void task2() {
   int timeoutCount = 0;
   myQueue queue;
   int chefIdleTime = 0; // 廚師閒置時間
+  int validOrderCount = 0; // 實際訂單數
 
   for (int i = 0; i < sharedCount; i++) {
     Order curr = sharedOrders[i];
@@ -354,6 +355,7 @@ void task2() {
     if (curr.timeOut < curr.arrival || curr.timeOut < curr.arrival + curr.duration) {
       continue;
     }
+    validOrderCount++; // 計入有效訂單
     while (!queue.isEmpty() && chefIdleTime <= curr.arrival) {
       Order qOrder;
       queue.dequeue(qOrder); // 取出
@@ -417,8 +419,8 @@ void task2() {
     totalDelay += timeoutList[i].Delay;
   }  
   float failRate = 0.0;
-  if (sharedCount > 0) {
-    failRate = (float)(abortCount + timeoutCount) / sharedCount * 100.0;
+  if (validOrderCount > 0) {
+    failRate = (float)(abortCount + timeoutCount) / validOrderCount * 100.0;
   }
   string outputFileName = "one" + loadedFileID + ".txt";
   ofstream outFile(outputFileName);
