@@ -130,7 +130,6 @@ void ReadInput(int &command) {
     cin.clear();
     string dummy;
     getline(cin, dummy);
-    cout << endl << "Command does not exist!" << endl << endl;
     return;
   }
 
