@@ -504,11 +504,125 @@ void task3() {
       }
     }
 
+    bool chef1_idle = (chef1_idle_time <= curr.arrival && chef1_queue.isEmpty());
+    bool chef2_idle = (chef2_idle_time <= curr.arrival && chef2_queue.isEmpty());
+    int q1 = chef1.size();
+    int q2 = chef2.size();
+    //case 1
+    if (chef1_idle && !chef2_idle) {
+      chef1_idle_time = curr.arrival;
+      int start1 = chef1_idle_time;
+      chef1_idle_time += curr.duration;
 
+      if (curr.timeOut < chef1_idle_time) {
+        timeoutList[timeoutCount++] = {curr.OID, 1, chef1_idle_time, start1 - curr.arrival};
+      }
+      continue;
+    }
+    if (chef2_idle && !chef1_idle) {
+      chef2_idle_time = curr.arrival;
+      int start = chef2_idle_time;
+      chef2_idle_time += curr.duration;
+
+      if (curr.timeOut < ) {
+        timeoutList[timeoutCount++] = {curr.OID, 2, chef2_idle_time, start - curr.arrival};
+      }
+      continue;
+    }
+    //case 2
+    if (chef1_idle && chef2_idle) {
+      chef1_idle_time = curr.arrival;
+      int start1 = chef1_idle_time;
+      chef1_idle_time += curr.duration;
+
+      if (curr.timeOut < chef1_idle_time) {
+        timeoutList[timeoutCount++] = {curr.OID, 1, chef1_idle_time, start1 - curr.arrival};
+      }
+      continue;
+    }
+    //case 3
+    if (q1 <= q2) {
+      chef1_queue.enqueue(curr);
+    } else {
+      chef2_queue.enqueue(curr);
+    }
+    //case 4
+    if (chef1_queue.isFull() && chef2_queue.isFull()) {
+      abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+    }
+  }
+  while (!chef1_queue.isEmpty()) {
+    Order o;
+    chef1_queue.dequeue(o);
+    if (o.timeOut < chef1_idle_time) {
+      abortList[abortCount++] = {o.OID, 1, chef1_idle_time, chef1_idle_time - o.arrival};
+    } else {
+      int start1 = chef1_idle_time;
+      chef1_idle_time += o.duration;
+
+      if (o.timeOut < chef1_idle_time) {
+        timeoutList[timeoutCount++] = {o.OID, 1, chef1_idle_time, start1 - o.arrival};
+      }
+    }
+  }
+  while (!chef2_queue.isEmpty()) {
+    Order o;
+    chef2_queue.dequeue(o);
+    if (o.timeOut < chef2_idle_time) {
+      abortList[abortCount++] = {o.OID, 2, chef2_idle_time, chef2_idle_time - o.arrival};
+    } else {
+      int start2 = chef2_idle_time;
+      chef2_idle_time += o.duration;
+
+      if (o.timeOut < chef2_idle_time) {
+        timeoutList[timeoutCount++] = {o.OID, 2, chef2_idle_time, start2 - o.arrival};
+      }
+    }
   }
 
-
+  double totalDelay = 0;
+  for (int i = 0; i < abortCount; i++) {
+    totalDelay += abortList[i].Delay;
+  }
+  for (int i = 0; i < timeoutCount; i++) {
+    totalDelay += timeoutList[i].Delay;
+  }
+  double failRate = 0;
+  if (sharedCount > 0) {
+    failRate = (abortCount + timeoutCount) * 100.0 / sharedCount
+  }
+  strint outFileName = "two" + loadedFileID + ".txt";
+  ofstream outFile(outFileName);
+  outFile << "\t[Abort List]" << endl;
+  outFile << "\tOID\tCID\tDelay\tAbort" << endl;
+  for (int i = 0; i < abortCount; i++) {
+    outFile << "[" << (i+1) << "]\t" 
+            << abortList[i].OID << "\t" 
+            << abortList[i].CID << "\t" 
+            << abortList[i].Delay << "\t" 
+            << abortList[i].Time << endl;
+  }
+  outFile << "\t[Timeout List]" << endl;
+  outFile << "\tOID\tCID\tDelay\tDeparture" << endl;
+  for (int i = 0; i < timeoutCount; i++) {
+    outFile << "[" << (i+1) << "]\t" 
+            << timeoutList[i].OID << "\t" 
+            << timeoutList[i].CID << "\t" 
+            << timeoutList[i].Delay << "\t" 
+            << timeoutList[i].Time << endl;
+  }
+  out << "[Total Delay]\n" << totalDelay << " min.\n";
+  out << "[Failure Percentage]\n" << fixed << setprecision(2) << failRate << " %\n";
+  outFile.close();
+  delete[] abortList;
+  delete[] timeoutList;
+  delete[] ordersCopy;
+  
 }
+  
+
+
+
 void task4() {
 
 }
