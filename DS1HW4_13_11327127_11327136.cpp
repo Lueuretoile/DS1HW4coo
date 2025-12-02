@@ -705,7 +705,7 @@ void task4() {
     cout << endl << "### Execute command 2 first! ###" << endl << endl;
     return;
   }
-
+  int validOrderCount = 0;
   int chefCount = getvalidN();
     // copy orders
   Order *orders = new Order[sharedCount];
@@ -726,9 +726,10 @@ void task4() {
     Order cur = orders[i];
 
     if (cur.timeOut < cur.arrival || cur.timeOut < cur.arrival + cur.duration) {
+      
       continue;
     }
-
+    validOrderCount++;
     for (int c = 0; c < chefCount; c++) {
       while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
         Order o;
@@ -804,7 +805,10 @@ void task4() {
   for (int i = 0; i < abortCount; i++) totalDelay += abortList[i].Delay;
   for (int i = 0; i < timeoutCount; i++) totalDelay += timeoutList[i].Delay;
 
-  double failRate = (abortCount + timeoutCount) * 100.0 / sharedCount;
+  double failRate = 0;
+  if (validOrderCount > 0) {
+    failRate = (float)(abortCount + timeoutCount) / validOrderCount * 100.0;
+  }
   string out;
   if (chefCount > 2) {
     out = "any" + loadedFileID + ".txt";
