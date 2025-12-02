@@ -252,10 +252,10 @@ void task1() {
   cout << endl;
   cout << "\tOID\tArrival\tDuration\tTimeOut" << endl;
   for (int i = 0; i < totalOrders; i++) {
-      cout << "(" << (i + 1) << ")\t" 
+      cout << "(" << (i + 1) << ") \t" 
            << orderList[i].OID << "\t" 
            << orderList[i].arrival << "\t" 
-           << orderList[i].duration << "\t\t" 
+           << orderList[i].duration << "\t" 
            << orderList[i].timeOut << endl;
   }
     
@@ -331,7 +331,7 @@ void task2() {
   // output original data
   cout << endl << "\tOID\tArrival\tDuration\tTimeOut" << endl;
   for (int i = 0; i < sharedCount; i++) {
-    cout << "(" << (i + 1) << ")\t" 
+    cout << "(" << (i + 1) << ") \t" 
          << sharedOrders[i].OID << "\t" 
          << sharedOrders[i].arrival << "\t" 
          << sharedOrders[i].duration << "\t\t" 
