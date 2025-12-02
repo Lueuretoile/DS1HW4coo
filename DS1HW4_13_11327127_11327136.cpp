@@ -608,17 +608,6 @@ void task3() {
     }
   }
 
-  for (int i = 0; i < abortCount - 1; i++) {
-    for (int j = i + 1; j < abortCount; j++) {
-      if (abortList[i].Time > abortList[j].Time || 
-          (abortList[i].Time == abortList[j].Time && abortList[i].OID > abortList[j].OID)) {
-        LogEntry temp = abortList[i];
-        abortList[i] = abortList[j];
-        abortList[j] = temp;
-      }
-    }
-  }
-
   double totalDelay = 0;
   for (int i = 0; i < abortCount; i++) {
     totalDelay += abortList[i].Delay;
