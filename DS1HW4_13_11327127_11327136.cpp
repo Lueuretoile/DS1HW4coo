@@ -677,8 +677,7 @@ void task4() {
     return;
   }
 
-  int chefCount;
-  chefCount = getvalidN();
+  int chefCount = getvalidN();
     // copy orders
   Order *orders = new Order[sharedCount];
   for (int i = 0; i < sharedCount; i++){
@@ -698,105 +697,75 @@ void task4() {
     Order cur = orders[i];
 
     for (int c = 0; c < chefCount; c++) {
-      while (!queues[c].isEmpty()) {
+      while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
         Order o;
         queues[c].dequeue(o);
-        if (idle[c] > cur.arrival || o.arrival > cur.arrival) {
-          break;
-        }
-        
-
-        int start = idle[c];
-        idle[c] += o.duration;
-
         if (o.timeOut < idle[c]) {
-          timeoutList[timeoutCount++] = {o.OID, c+1, idle[c], start - o.arrival};
+          abortList[abortCount++] = {o.OID, c+1, idle[c], idle[c] - o.arrival};
+        } else {
+          int start = idle[c];
+          idle[c] += o.duration;
+          if (o.timeOut < idle[c]) {
+            timeoutList[timeoutCount++] = {o.OID, c + 1, idle[c], start - o.arrival};
+          }
         }
+
+        
       }
     }
 
     //找 idle 廚師
-    vector<int> idleChefs;
+    int bestchef = -1;
     for (int c = 0; c < chefCount; c++){
       if (idle[c] <= cur.arrival){
-        idleChefs.push_back(c);
+        bestchef = c;
+        break;
       }
     }
 
-    // Case 1/2：有人 idle → 編號最小 idle 的直接做
-    if (!idleChefs.empty()) {
-      int c = idleChefs[0];  // 編號最小
-
-      idle[c] = cur.arrival;
-      int start = idle[c];
-      idle[c] += cur.duration;
-
-      if (cur.timeOut < idle[c]){
-        timeoutList[timeoutCount++] = {cur.OID, c + 1, idle[c], start - cur.arrival};
+    // Case 1 & 2: 直接製作
+    if (bestchef != -1) {
+      idle[bestchef] = cur.arrival;
+      int start = idle[bestchef];
+      idle[bestchef] += cur.duration;
+      if (cur.timeOut < idle[bestchef]){
+        timeoutList[timeoutCount++] = {cur.OID, bestchef + 1, idle[bestchef], start - cur.arrival};
       }
-        continue;
-    }
-    // 所有廚師都忙 → SQF 排隊
-    int best = -1;
-    int bestSize = 999;
-
-    for (int c = 0; c < chefCount; c++) {
-      int s = queues[c].size();
-      if (s < bestSize) {
-        bestSize = s;
-        best = c;
-      }
-    }
-
-        // Case 4
-    bool allFull = true;
-    for (int c = 0; c < chefCount; c++) {
-      if (!queues[c].isFull()) {
-        allFull = false;
-      }
-    }
-
-    if (allFull) {
-      abortList[abortCount++] = {cur.OID, 0, cur.arrival, 0};
-      continue;
-    }
-
-    // 把 cur 放進最短 queue（滿就找下一個最短）
-    bool queued = false;
-    for (int k = 0; k < chefCount && !queued; k++) {
-      // 找第 k 小的 queue
-      int target = -1;
-      int bestSize2 = 999;
-
-      for (int c = 0; c < chefCount; c++) {
-        int s = queues[c].size();
-        if (s < bestSize2 && s >= bestSize) {
-          bestSize2 = s;
-          target = c;
+    } else { // Case 3 & 4: 找最短佇列
+      int targetqueue = -1;
+      int minsize = 999;
+      
+      for (int i = 0; i < chefCount; i++) {
+        int size = queues[i].size();
+        if (size < minsize) {
+          minsize = size;
+          targetqueue = i;
         }
-      } 
-      if (!queues[target].isFull()) {
-        queues[target].enqueue(cur);
-        queued = true;
+      }
+      //case 4 : allfull
+      if (queues[targetqueue].isFull()) {
+        abortList[abortCount++] = {cur.OID, 0, cur.arrival, 0};
+      } else {
+        queues[targetqueue].enqueue(cur);
       }
     }
   }
-
-  //所有 queue 的剩餘訂單
-
-  for (int c = 0; c < chefCount; c++) {
-    while (!queues[c].isEmpty()) {
+  for(int i = 0; i < chefCount; i++){
+    while(!queues[i].isEmpty()){
       Order o;
-      queues[c].dequeue(o);
-
-      int start = idle[c];
-      idle[c] += o.duration;
-
-      if (o.timeOut < idle[c]){
-        timeoutList[timeoutCount++] = {o.OID, c + 1, idle[c], start - o.arrival};
+      queues[i].dequeue(o);
+      if (o.timeOut < idle[i]){
+        abortList[abortCount++] = {o.OID, i + 1, idle[i], idle[i] - o.arrival};
+      } else {
+        int start = idle[i];
+        idle[i] += o.duration;
+        if (o.timeOut < idle[i]){
+          timeoutList[timeoutCount++] = {o.OID, i + 1, idle[i], start - o.arrival};
+        }
       }
     }
   }
+    
 
   double totalDelay = 0;
   for (int i = 0; i < abortCount; i++) totalDelay += abortList[i].Delay;
