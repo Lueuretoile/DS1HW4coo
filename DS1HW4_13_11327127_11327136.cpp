@@ -696,6 +696,11 @@ void task4() {
   for (int i = 0; i < sharedCount; i++) {
     Order cur = orders[i];
 
+    // Skip invalid orders (timeout before arrival or before completion)
+    if (cur.timeOut < cur.arrival || cur.timeOut < cur.arrival + cur.duration) {
+      continue;
+    }
+
     for (int c = 0; c < chefCount; c++) {
       while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
         Order o;
