@@ -506,8 +506,8 @@ void task3() {
 
     bool chef1_idle = (chef1_idle_time <= curr.arrival && chef1_queue.isEmpty());
     bool chef2_idle = (chef2_idle_time <= curr.arrival && chef2_queue.isEmpty());
-    int q1 = chef1.size();
-    int q2 = chef2.size();
+    int q1 = chef1_queue.size();
+    int q2 = chef2_queue.size();
     //case 1
     if (chef1_idle && !chef2_idle) {
       chef1_idle_time = curr.arrival;
@@ -524,7 +524,7 @@ void task3() {
       int start = chef2_idle_time;
       chef2_idle_time += curr.duration;
 
-      if (curr.timeOut < ) {
+      if (curr.timeOut < chef2_idle_time) {
         timeoutList[timeoutCount++] = {curr.OID, 2, chef2_idle_time, start - curr.arrival};
       }
       continue;
@@ -589,9 +589,9 @@ void task3() {
   }
   double failRate = 0;
   if (sharedCount > 0) {
-    failRate = (abortCount + timeoutCount) * 100.0 / sharedCount
+    failRate = (abortCount + timeoutCount) * 100.0 / sharedCount;
   }
-  strint outFileName = "two" + loadedFileID + ".txt";
+  string outFileName = "two" + loadedFileID + ".txt";
   ofstream outFile(outFileName);
   outFile << "\t[Abort List]" << endl;
   outFile << "\tOID\tCID\tDelay\tAbort" << endl;
@@ -611,8 +611,8 @@ void task3() {
             << timeoutList[i].Delay << "\t" 
             << timeoutList[i].Time << endl;
   }
-  out << "[Total Delay]\n" << totalDelay << " min.\n";
-  out << "[Failure Percentage]\n" << fixed << setprecision(2) << failRate << " %\n";
+  outFile << "[Total Delay]\n" << totalDelay << " min.\n";
+  outFile << "[Failure Percentage]\n" << fixed << setprecision(2) << failRate << " %\n";
   outFile.close();
   delete[] abortList;
   delete[] timeoutList;
