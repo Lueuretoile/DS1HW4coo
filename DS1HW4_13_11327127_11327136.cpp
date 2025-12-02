@@ -334,7 +334,7 @@ void task2() {
     cout << "(" << (i + 1) << ") \t" 
          << sharedOrders[i].OID << "\t" 
          << sharedOrders[i].arrival << "\t" 
-         << sharedOrders[i].duration << "\t\t" 
+         << sharedOrders[i].duration << "\t" 
          << sharedOrders[i].timeOut << endl;
   }
   cout << endl;
