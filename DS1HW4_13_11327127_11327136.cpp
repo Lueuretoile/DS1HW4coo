@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <chrono> // 計時用
+#include <vector>
 using namespace std;
 
 // define functions
@@ -635,7 +636,218 @@ void task3() {
   delete[] ordersCopy;
   
 }
-  
+int getvalidN() {
+  int n;
+  std::string a;
+  while (1) {
+    std::cout <<"\nInput the number of queues: ";;
+    std::cin >> a;
+    bool isvalid = true;
+    bool isnum = true;
+    for (int i = 0; i < a.length(); i++) {
+      if (a[i] < '0' || a[i] > '9') {
+        isnum = false;
+        isvalid = false;
+        break;
+      }
+    }
+    if (a.length() > 2) {
+      isvalid = false;
+    }
+    if (!isnum) {
+      continue;
+    } else if (!isvalid) {
+      std::cout << "\n### It is NOT in [1,19] ###" << std::endl;
+      continue;
+    }
+    n = std::stoi(a);
+    if (n < 1 || n > 19) {
+      std::cout << "\n### It is NOT in [1,19] ###" << std::endl;
+    } else {
+      return n;
+    }
+  }
+}
 void task4() {
+  if (sharedOrders == nullptr) {
+    cout << endl << "### Execute command 2 first! ###" << endl << endl;
+    return;
+  }
 
+  int chefCount;
+  cout << "\nInput the number of chefs (>=2): ";
+  cin >> chefCount;
+  if (chefCount < 2) chefCount = 2;
+
+    // copy orders
+  Order *orders = new Order[sharedCount];
+  for (int i = 0; i < sharedCount; i++){
+    orders[i] = sharedOrders[i];
+  }
+    // create queue for each chef
+  myQueue *queues = new myQueue[chefCount];
+  int *idle = new int[chefCount];
+  for (int c = 0; c < chefCount; c++){
+    idle[c] = 0;
+  }
+  LogEntry *abortList = new LogEntry[sharedCount];
+  LogEntry *timeoutList = new LogEntry[sharedCount];
+  int abortCount = 0, timeoutCount = 0;
+
+  for (int i = 0; i < sharedCount; i++) {
+    Order cur = orders[i];
+
+        // ==========================================================
+        // Step1：所有廚師先清空 queue（只要 idle_time ≤ arrival）
+        // ==========================================================
+    for (int c = 0; c < chefCount; c++) {
+      while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
+        Order o;
+        queues[c].dequeue(o);
+
+        int start = idle[c];
+        idle[c] += o.duration;
+
+        if (o.timeOut < idle[c]){
+          timeoutList[timeoutCount++] = {o.OID, c + 1, idle[c], start - o.arrival};
+        }
+      }
+    }
+
+        // ==========================================================
+        // Step2：找 idle 廚師
+        // ==========================================================
+    vector<int> idleChefs;
+    for (int c = 0; c < chefCount; c++){
+      if (idle[c] <= cur.arrival){
+        idleChefs.push_back(c);
+      }
+    }
+
+        // Case 1/2：有人 idle → 編號最小 idle 的直接做
+    if (!idleChefs.empty()) {
+      int c = idleChefs[0];  // 編號最小者
+
+      idle[c] = cur.arrival;
+      int start = idle[c];
+      idle[c] += cur.duration;
+
+      if (cur.timeOut < idle[c]){
+        timeoutList[timeoutCount++] = {cur.OID, c + 1, idle[c], start - cur.arrival};
+      }
+        continue;
+    }
+
+        // ==========================================================
+        // Step3：所有廚師都忙 → SQF 排隊
+        // ==========================================================
+    int best = -1;
+    int bestSize = 999;
+
+    for (int c = 0; c < chefCount; c++) {
+      int s = queues[c].size();
+      if (s < bestSize) {
+        bestSize = s;
+        best = c;
+      }
+    }
+
+        // Case 4：所有 queue 滿
+    bool allFull = true;
+    for (int c = 0; c < chefCount; c++) {
+      if (!queues[c].isFull()) {
+        allFull = false;
+      }
+    }
+
+    if (allFull) {
+      abortList[abortCount++] = {cur.OID, 0, cur.arrival, 0};
+      continue;
+    }
+
+        // 把 cur 放進最短 queue（若滿就找下一個最短）
+    bool queued = false;
+    for (int k = 0; k < chefCount && !queued; k++) {
+            // 找第 k 小的 queue
+      int target = -1;
+      int bestSize2 = 999;
+
+      for (int c = 0; c < chefCount; c++) {
+        int s = queues[c].size();
+        if (s < bestSize2 && s >= bestSize) {
+          bestSize2 = s;
+          target = c;
+        }
+      } 
+      if (!queues[target].isFull()) {
+        queues[target].enqueue(cur);
+        queued = true;
+      }
+    }
+  }
+
+    // ==========================================================
+    // Step4：所有 queue 的剩餘訂單處理完
+    // ==========================================================
+  for (int c = 0; c < chefCount; c++) {
+    while (!queues[c].isEmpty()) {
+      Order o;
+      queues[c].dequeue(o);
+
+      int start = idle[c];
+      idle[c] += o.duration;
+
+      if (o.timeOut < idle[c]){
+        timeoutList[timeoutCount++] = {o.OID, c + 1, idle[c], start - o.arrival};
+      }
+    }
+  }
+
+    // ==========================================================
+    // Step5：輸出結果
+    // ==========================================================
+  double totalDelay = 0;
+  for (int i = 0; i < abortCount; i++) totalDelay += abortList[i].Delay;
+  for (int i = 0; i < timeoutCount; i++) totalDelay += timeoutList[i].Delay;
+
+  double failRate = (abortCount + timeoutCount) * 100.0 / sharedCount;
+  string out;
+  if (chefCount > 2) {
+    out = "any" + loadedFileID + ".txt";
+  } else if (chefCount == 2) {
+    out = "two" + loadedFileID + ".txt";
+  } else if (chefCount == 1) {
+    out = "one" + loadedFileID + ".txt";
+  }
+  
+  ofstream fout(out);
+
+  fout << "\t[Abort List]\n";
+  fout << "\tOID\tCID\tDelay\tAbort\n";
+  for (int i = 0; i < abortCount; i++){
+    fout << "[" << i + 1 << "]\t" 
+         << abortList[i].OID << "\t" 
+         << abortList[i].CID << "\t" 
+         << abortList[i].Delay << "\t" 
+         << abortList[i].Time << "\n";
+  }
+  fout << "\t[Timeout List]\n";
+  fout << "\tOID\tCID\tDelay\tDeparture\n";
+  for (int i = 0; i < timeoutCount; i++) {
+    fout << "[" << i + 1 << "]\t" 
+         << timeoutList[i].OID << "\t" 
+         << timeoutList[i].CID << "\t" 
+         << timeoutList[i].Delay << "\t" 
+         << timeoutList[i].Time << "\n";
+  }
+  fout << "[Total Delay]\n" << totalDelay << " min.\n";
+  fout << "[Failure Percentage]\n" << fixed << setprecision(2) << failRate << " %\n";
+
+  fout.close();
+
+  delete[] abortList;
+  delete[] timeoutList;
+  delete[] orders;
+  delete[] queues;
+  delete[] idle;
 }
