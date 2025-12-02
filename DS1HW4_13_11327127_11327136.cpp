@@ -349,14 +349,14 @@ void task2() {
 
   for (int i = 0; i < sharedCount; i++) {
     Order curr = sharedOrders[i];
-    while (!queue.isEmpty()) {
-      if (chefIdleTime > curr.arrival) {
-        break; // 廚師還在忙，無法處理佇列
-      }
+    
+    if (curr.timeOut < curr.arrival || curr.timeOut < curr.arrival + curr.duration) {
+      continue;
+    }
+    while (!queue.isEmpty() && chefIdleTime <= curr.arrival) {
       Order qOrder;
       queue.dequeue(qOrder); // 取出
 
-      // 檢查是否等待逾時
       if (qOrder.timeOut < chefIdleTime) {
         // CID=1 (進過佇列)
         abortList[abortCount++] = {qOrder.OID, 1, chefIdleTime, chefIdleTime - qOrder.arrival};
@@ -372,11 +372,15 @@ void task2() {
     }
 
     // 處理新訂單 curr
-    if (queue.isFull()) {
-      abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
-    } else if (chefIdleTime > curr.arrival) {
-      queue.enqueue(curr);
+    if (chefIdleTime > curr.arrival) {
+      // 廚師還在忙，需要進入佇列
+      if (queue.isFull()) {
+        abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+      } else {
+        queue.enqueue(curr);
+      }
     } else {
+      // 廚師閒置（chefIdleTime <= curr.arrival），直接製作
       chefIdleTime = curr.arrival;
       int startCook = chefIdleTime;
       chefIdleTime += curr.duration;
@@ -411,9 +415,9 @@ void task2() {
   for (int i = 0; i < timeoutCount; i++) {
     totalDelay += timeoutList[i].Delay;
   }  
-  double failRate = 0.0;
+  float failRate = 0.0;
   if (sharedCount > 0) {
-    failRate = (double)(abortCount + timeoutCount) / sharedCount * 100.0;
+    failRate = (float)(abortCount + timeoutCount) / sharedCount * 100.0;
   }
   string outputFileName = "one" + loadedFileID + ".txt";
   ofstream outFile(outputFileName);
