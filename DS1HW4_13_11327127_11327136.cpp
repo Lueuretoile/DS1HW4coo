@@ -13,10 +13,10 @@ void task3();
 void task4();
 
 struct Order {
-  int OID;
-  int arrival;
-  int duration;
-  int timeOut;
+  int OID;        // 訂單編號
+  int arrival;    // 下單時刻 
+  int duration;   // 製作耗時
+  int timeOut;    //逾時時刻
 };
 
 struct LogEntry {
@@ -449,9 +449,66 @@ void task2() {
 }
 
 void task3() {
+  if (sharedOrders == nullptr) {
+    cout << endl << "### Execute command 2 first! ###" << endl << endl;
+    return;
+  }
+  Order *ordersCopy = new Order[sharedCount];
+  for (int i = 0; i < sharedCount; i++) {
+    ordersCopy[i] = sharedOrders[i];
+  }
+
+  // initialize local data
+  LogEntry* abortList = new LogEntry[sharedCount];
+  int abortCount = 0;
+  LogEntry* timeoutList = new LogEntry[sharedCount];
+  int timeoutCount = 0;
+  myQueue chef1_queue;
+  myQueue chef2_queue;
+  int chef1_idle_time = 0;  // 廚師1閒置時間
+  int chef2_idle_time = 0;  // 廚師2閒置時間
+
+
+  for (int i = 0; i < sharedCount; i++) {
+    Order curr = ordersCopy[i];
+    bool work = false;
+    if (!chef1_queue.isEmpty()) {
+      Order o1;
+      chef1_queue.peek(o1);
+      if (chef1_idle_time < curr.arrival) {
+        chef1_queue.dequeue(o1);
+        work = true;
+        int start1 =  chef1_idle_time;
+        chef1_idle_time += o1.duration;
+        
+        if (o1.timeOut < chef1_idle_time) {
+          timeoutList[timeoutCount++] = {o1.OID, 1, chef1_idle_time, start1 - o1.arrival};
+        }
+
+
+      }
+    }
+
+    if (!chef2_queue.isEmpty()) {
+      Order o2;
+      chef2_queue.peek(o2);
+      if (chef2_idle_time < curr.arrival) {
+        chef2_queue.dequeue(o2);
+        work = true;
+        int start2 = chef2_idle_time;
+        chef2_idle_time += o2.duration;
+        
+        if (o2.timeOut < chef2_idle_time) {
+          timeoutList[timeoutCount++] = {o2.OID, 2, chef2_idle_time, start2 - o2.arrival};
+        }
+      }
+    }
+
+
+  }
+
 
 }
-
 void task4() {
 
 }
