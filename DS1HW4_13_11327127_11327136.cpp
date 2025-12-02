@@ -479,7 +479,7 @@ void task3() {
     if (!chef1_queue.isEmpty()) {
       Order o1;
       chef1_queue.peek(o1);
-      if (chef1_idle_time < curr.arrival) {
+      if (chef1_idle_time <= curr.arrival) {
         chef1_queue.dequeue(o1);
         work = true;
         int start1 =  chef1_idle_time;
@@ -496,7 +496,7 @@ void task3() {
     if (!chef2_queue.isEmpty()) {
       Order o2;
       chef2_queue.peek(o2);
-      if (chef2_idle_time < curr.arrival) {
+      if (chef2_idle_time <= curr.arrival) {
         chef2_queue.dequeue(o2);
         work = true;
         int start2 = chef2_idle_time;
@@ -544,16 +544,28 @@ void task3() {
       }
       continue;
     }
-    //case 3
-    if (q1 <= q2) {
-      chef1_queue.enqueue(curr);
-    } else {
-      chef2_queue.enqueue(curr);
-    }
-    //case 4
-    if (chef1_queue.isFull() && chef2_queue.isFull()) {
-      abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
-    }
+    // case 3 + case 4
+    if (q1 <= q2) {   // 優先塞 chef1
+      if (!chef1_queue.isFull()) {
+        chef1_queue.enqueue(curr);   // case 3
+      } else if (!chef2_queue.isFull()) {
+        chef2_queue.enqueue(curr);   // case 3 (第二選擇)
+      } else {
+        // case 4：兩個都滿
+        abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+      }
+    } else { // q2 比較短
+      if (!chef2_queue.isFull()) {
+        chef2_queue.enqueue(curr);   // case 3
+      } else if (!chef1_queue.isFull()) {
+        chef1_queue.enqueue(curr);   // case 3
+      } else {
+        // case 4：兩個都滿
+        abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+      }
+}
+
+    
   }
   while (!chef1_queue.isEmpty()) {
     Order o;
