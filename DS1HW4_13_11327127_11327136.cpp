@@ -576,38 +576,50 @@ void task3() {
     }
   }
   // 處理剩餘訂單
-  while (!chef1_queue.isEmpty()) {
-    Order o;
-    chef1_queue.dequeue(o);
-    
-    if (o.timeOut < chef1_idle_time) {
-      abortList[abortCount++] = {o.OID, 1, chef1_idle_time, chef1_idle_time - o.arrival};
-    } else {
-      int start1 = chef1_idle_time;
-      chef1_idle_time += o.duration;
+  while (!chef1_queue.isEmpty() || !chef2_queue.isEmpty()) {
+    int targetChef = 0; // 0: None, 1: Chef 1, 2: Chef 2
+    bool chef1_ready = !chef1_queue.isEmpty();
+    bool chef2_ready = !chef2_queue.isEmpty();
+    if (chef1_ready && chef2_ready) {
+      if (chef1_idle_time <= chef2_idle_time) {
+          targetChef = 1;
+        } else {
+          targetChef = 2;
+        }
+    } else if (chef1_ready) {
+      targetChef = 1;
+    } else if (chef2_ready) {
+      targetChef = 2;
+    }
 
-      if (o.timeOut < chef1_idle_time) {
-        timeoutList[timeoutCount++] = {o.OID, 1, chef1_idle_time, start1 - o.arrival};
+    if (targetChef == 0) {break;}
+
+    Order o;
+    int current_idle_time;
+    int chef_id = targetChef;
+
+    if (targetChef == 1) {
+      chef1_queue.dequeue(o);
+      current_idle_time = chef1_idle_time;
+    } else { // targetChef == 2
+      chef2_queue.dequeue(o);
+      current_idle_time = chef2_idle_time;
+    }
+    if (o.timeOut < current_idle_time) {
+      abortList[abortCount++] = {o.OID, chef_id, current_idle_time, current_idle_time - o.arrival};
+    } else {
+      int start = current_idle_time;
+      current_idle_time += o.duration;
+      if (o.timeOut < current_idle_time) {
+        timeoutList[timeoutCount++] = {o.OID, chef_id, current_idle_time, start - o.arrival};
       }
     }
-  }
-  
-  while (!chef2_queue.isEmpty()) {
-    Order o;
-    chef2_queue.dequeue(o);
-    
-    if (o.timeOut < chef2_idle_time) {
-      abortList[abortCount++] = {o.OID, 2, chef2_idle_time, chef2_idle_time - o.arrival};
+    if (targetChef == 1) {
+      chef1_idle_time = current_idle_time;
     } else {
-      int start2 = chef2_idle_time;
-      chef2_idle_time += o.duration;
-
-      if (o.timeOut < chef2_idle_time) {
-        timeoutList[timeoutCount++] = {o.OID, 2, chef2_idle_time, start2 - o.arrival};
-      }
+      chef2_idle_time = current_idle_time;
     }
   }
-
   double totalDelay = 0;
   for (int i = 0; i < abortCount; i++) {
     totalDelay += abortList[i].Delay;
