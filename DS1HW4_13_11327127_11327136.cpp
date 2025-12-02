@@ -675,8 +675,7 @@ void task4() {
   }
 
   int chefCount;
-  cout << "\nInput the number of chefs (>=2): ";
-  cin >> chefCount;
+  chefCount = getvalidN();
   if (chefCount < 2) chefCount = 2;
 
     // copy orders
@@ -697,9 +696,8 @@ void task4() {
   for (int i = 0; i < sharedCount; i++) {
     Order cur = orders[i];
 
-        // ==========================================================
-        // Step1：所有廚師先清空 queue（只要 idle_time ≤ arrival）
-        // ==========================================================
+    //所有廚師先清空 queue（只要 idle_time ≤ arrival）
+
     for (int c = 0; c < chefCount; c++) {
       while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
         Order o;
@@ -714,9 +712,7 @@ void task4() {
       }
     }
 
-        // ==========================================================
-        // Step2：找 idle 廚師
-        // ==========================================================
+    //找 idle 廚師
     vector<int> idleChefs;
     for (int c = 0; c < chefCount; c++){
       if (idle[c] <= cur.arrival){
@@ -724,9 +720,9 @@ void task4() {
       }
     }
 
-        // Case 1/2：有人 idle → 編號最小 idle 的直接做
+    // Case 1/2：有人 idle → 編號最小 idle 的直接做
     if (!idleChefs.empty()) {
-      int c = idleChefs[0];  // 編號最小者
+      int c = idleChefs[0];  // 編號最小
 
       idle[c] = cur.arrival;
       int start = idle[c];
@@ -737,10 +733,7 @@ void task4() {
       }
         continue;
     }
-
-        // ==========================================================
-        // Step3：所有廚師都忙 → SQF 排隊
-        // ==========================================================
+    // 所有廚師都忙 → SQF 排隊
     int best = -1;
     int bestSize = 999;
 
@@ -752,7 +745,7 @@ void task4() {
       }
     }
 
-        // Case 4：所有 queue 滿
+        // Case 4
     bool allFull = true;
     for (int c = 0; c < chefCount; c++) {
       if (!queues[c].isFull()) {
@@ -765,10 +758,10 @@ void task4() {
       continue;
     }
 
-        // 把 cur 放進最短 queue（若滿就找下一個最短）
+    // 把 cur 放進最短 queue（滿就找下一個最短）
     bool queued = false;
     for (int k = 0; k < chefCount && !queued; k++) {
-            // 找第 k 小的 queue
+      // 找第 k 小的 queue
       int target = -1;
       int bestSize2 = 999;
 
@@ -786,9 +779,8 @@ void task4() {
     }
   }
 
-    // ==========================================================
-    // Step4：所有 queue 的剩餘訂單處理完
-    // ==========================================================
+  //所有 queue 的剩餘訂單
+
   for (int c = 0; c < chefCount; c++) {
     while (!queues[c].isEmpty()) {
       Order o;
@@ -803,9 +795,6 @@ void task4() {
     }
   }
 
-    // ==========================================================
-    // Step5：輸出結果
-    // ==========================================================
   double totalDelay = 0;
   for (int i = 0; i < abortCount; i++) totalDelay += abortList[i].Delay;
   for (int i = 0; i < timeoutCount; i++) totalDelay += timeoutList[i].Delay;
