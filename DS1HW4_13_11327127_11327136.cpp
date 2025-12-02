@@ -167,6 +167,7 @@ int main() {
         task2();
         break;
       case 3:
+        cout << endl;
         task3();
         break;
       case 4:
@@ -454,7 +455,7 @@ void task2() {
 
 void task3() {
   if (sharedOrders == nullptr) {
-    cout << endl << "### Execute command 2 first! ###" << endl << endl;
+    cout << "### Execute command 2 first! ###" << endl << endl;
     return;
   }
   Order *ordersCopy = new Order[sharedCount];
