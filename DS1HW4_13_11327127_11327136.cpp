@@ -455,14 +455,11 @@ void task2() {
   delete[] timeoutList;
 }
 
+
 void task3() {
   if (sharedOrders == nullptr) {
     cout << "### Execute command 2 first! ###" << endl << endl;
     return;
-  }
-  Order *ordersCopy = new Order[sharedCount];
-  for (int i = 0; i < sharedCount; i++) {
-    ordersCopy[i] = sharedOrders[i];
   }
 
   // initialize local data
@@ -474,34 +471,42 @@ void task3() {
   myQueue chef2_queue;
   int chef1_idle_time = 0;  // 廚師1閒置時間
   int chef2_idle_time = 0;  // 廚師2閒置時間
-
+  int validOrderCount = 0;
 
   for (int i = 0; i < sharedCount; i++) {
-    Order curr = ordersCopy[i];
-    bool work = false;
-    if (!chef1_queue.isEmpty()) {
+    Order curr = sharedOrders[i];
+    
+    // skip invalid order
+    if (curr.timeOut < curr.arrival || curr.timeOut < curr.arrival + curr.duration) {
+      continue;
+    }
+    validOrderCount++;
+    // 處理兩個queue內可執行的舊訂單
+    while (!chef1_queue.isEmpty() && chef1_idle_time <= curr.arrival) {
       Order o1;
-      chef1_queue.peek(o1);
-      if (chef1_idle_time <= curr.arrival) {
-        chef1_queue.dequeue(o1);
-        work = true;
-        int start1 =  chef1_idle_time;
+      chef1_queue.dequeue(o1);
+      
+      // 是否等待逾時
+      if (o1.timeOut < chef1_idle_time) {
+        abortList[abortCount++] = {o1.OID, 1, chef1_idle_time, chef1_idle_time - o1.arrival};
+      } else {
+        int start1 = chef1_idle_time;
         chef1_idle_time += o1.duration;
         
         if (o1.timeOut < chef1_idle_time) {
           timeoutList[timeoutCount++] = {o1.OID, 1, chef1_idle_time, start1 - o1.arrival};
         }
-
-
       }
     }
 
-    if (!chef2_queue.isEmpty()) {
+    while (!chef2_queue.isEmpty() && chef2_idle_time <= curr.arrival) {
       Order o2;
-      chef2_queue.peek(o2);
-      if (chef2_idle_time <= curr.arrival) {
-        chef2_queue.dequeue(o2);
-        work = true;
+      chef2_queue.dequeue(o2);
+      
+      // 檢查是否等待逾時
+      if (o2.timeOut < chef2_idle_time) {
+        abortList[abortCount++] = {o2.OID, 2, chef2_idle_time, chef2_idle_time - o2.arrival};
+      } else {
         int start2 = chef2_idle_time;
         chef2_idle_time += o2.duration;
         
@@ -511,11 +516,11 @@ void task3() {
       }
     }
 
+    // 選擇廚師
     bool chef1_idle = (chef1_idle_time <= curr.arrival && chef1_queue.isEmpty());
     bool chef2_idle = (chef2_idle_time <= curr.arrival && chef2_queue.isEmpty());
-    int q1 = chef1_queue.size();
-    int q2 = chef2_queue.size();
-    //case 1
+    
+    // Case 1 only one avaliable
     if (chef1_idle && !chef2_idle) {
       chef1_idle_time = curr.arrival;
       int start1 = chef1_idle_time;
@@ -526,17 +531,19 @@ void task3() {
       }
       continue;
     }
+    
     if (chef2_idle && !chef1_idle) {
       chef2_idle_time = curr.arrival;
-      int start = chef2_idle_time;
+      int start2 = chef2_idle_time;
       chef2_idle_time += curr.duration;
 
       if (curr.timeOut < chef2_idle_time) {
-        timeoutList[timeoutCount++] = {curr.OID, 2, chef2_idle_time, start - curr.arrival};
+        timeoutList[timeoutCount++] = {curr.OID, 2, chef2_idle_time, start2 - curr.arrival};
       }
       continue;
     }
-    //case 2
+    
+    // Case 2 both are avaliable, prefer 1
     if (chef1_idle && chef2_idle) {
       chef1_idle_time = curr.arrival;
       int start1 = chef1_idle_time;
@@ -547,32 +554,32 @@ void task3() {
       }
       continue;
     }
-    // case 3 + case 4
-    if (q1 <= q2) {   // 優先塞 chef1
-      if (!chef1_queue.isFull()) {
-        chef1_queue.enqueue(curr);   // case 3
-      } else if (!chef2_queue.isFull()) {
-        chef2_queue.enqueue(curr);   // case 3 (第二選擇)
-      } else {
-        // case 4：兩個都滿
-        abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
-      }
-    } else { // q2 比較短
-      if (!chef2_queue.isFull()) {
-        chef2_queue.enqueue(curr);   // case 3
-      } else if (!chef1_queue.isFull()) {
-        chef1_queue.enqueue(curr);   // case 3
-      } else {
-        // case 4：兩個都滿
-        abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
-      }
-}
-
     
+    // Case 3 both busy
+    int q1 = chef1_queue.size();
+    int q2 = chef2_queue.size();
+    
+    // Case 4 both queues are full
+    if (chef1_queue.isFull() && chef2_queue.isFull()) {
+      abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+      continue;
+    }
+    
+    // Case 3 prefer shorteset queue
+    if (q1 < q2) {
+      chef1_queue.enqueue(curr);
+    } else if (q2 < q1) {
+      chef2_queue.enqueue(curr);
+    } else {
+      // prefer 1
+      chef1_queue.enqueue(curr);
+    }
   }
+  // 處理剩餘訂單
   while (!chef1_queue.isEmpty()) {
     Order o;
     chef1_queue.dequeue(o);
+    
     if (o.timeOut < chef1_idle_time) {
       abortList[abortCount++] = {o.OID, 1, chef1_idle_time, chef1_idle_time - o.arrival};
     } else {
@@ -584,9 +591,11 @@ void task3() {
       }
     }
   }
+  
   while (!chef2_queue.isEmpty()) {
     Order o;
     chef2_queue.dequeue(o);
+    
     if (o.timeOut < chef2_idle_time) {
       abortList[abortCount++] = {o.OID, 2, chef2_idle_time, chef2_idle_time - o.arrival};
     } else {
@@ -606,12 +615,15 @@ void task3() {
   for (int i = 0; i < timeoutCount; i++) {
     totalDelay += timeoutList[i].Delay;
   }
+  
   double failRate = 0;
-  if (sharedCount > 0) {
-    failRate = (abortCount + timeoutCount) * 100.0 / sharedCount;
+  if (validOrderCount > 0) {
+    failRate = (float)(abortCount + timeoutCount) / validOrderCount * 100.0;
   }
+  // write in 
   string outFileName = "two" + loadedFileID + ".txt";
   ofstream outFile(outFileName);
+  
   outFile << "\t[Abort List]" << endl;
   outFile << "\tOID\tCID\tDelay\tAbort" << endl;
   for (int i = 0; i < abortCount; i++) {
@@ -621,6 +633,7 @@ void task3() {
             << abortList[i].Delay << "\t" 
             << abortList[i].Time << endl;
   }
+  
   outFile << "\t[Timeout List]" << endl;
   outFile << "\tOID\tCID\tDelay\tDeparture" << endl;
   for (int i = 0; i < timeoutCount; i++) {
@@ -630,14 +643,18 @@ void task3() {
             << timeoutList[i].Delay << "\t" 
             << timeoutList[i].Time << endl;
   }
-  outFile << "[Total Delay]\n" << totalDelay << " min.\n";
-  outFile << "[Failure Percentage]\n" << fixed << setprecision(2) << failRate << " %\n";
+  
+  outFile << "[Total Delay]" << endl;
+  outFile << fixed << setprecision(0) << totalDelay << " min." << endl;
+  outFile << "[Failure Percentage]" << endl;
+  outFile << fixed << setprecision(2) << failRate << " %" << endl;
   outFile.close();
+  
   delete[] abortList;
   delete[] timeoutList;
-  delete[] ordersCopy;
   
 }
+
 int getvalidN() {
   int n;
   std::string a;
