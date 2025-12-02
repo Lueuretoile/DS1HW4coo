@@ -677,8 +677,6 @@ void task4() {
 
   int chefCount;
   chefCount = getvalidN();
-  if (chefCount < 2) chefCount = 2;
-
     // copy orders
   Order *orders = new Order[sharedCount];
   for (int i = 0; i < sharedCount; i++){
@@ -697,18 +695,20 @@ void task4() {
   for (int i = 0; i < sharedCount; i++) {
     Order cur = orders[i];
 
-    //所有廚師先清空 queue（只要 idle_time ≤ arrival）
-
     for (int c = 0; c < chefCount; c++) {
-      while (!queues[c].isEmpty() && idle[c] <= cur.arrival) {
+      while (!queues[c].isEmpty()) {
         Order o;
         queues[c].dequeue(o);
+        if (idle[c] > cur.arrival || o.arrival > cur.arrival) {
+          break;
+        }
+        
 
         int start = idle[c];
         idle[c] += o.duration;
 
-        if (o.timeOut < idle[c]){
-          timeoutList[timeoutCount++] = {o.OID, c + 1, idle[c], start - o.arrival};
+        if (o.timeOut < idle[c]) {
+          timeoutList[timeoutCount++] = {o.OID, c+1, idle[c], start - o.arrival};
         }
       }
     }
