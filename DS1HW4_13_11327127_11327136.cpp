@@ -148,6 +148,11 @@ string getInputID() {
 
 void shellSort();
 
+// global data
+Order* sharedOrders = nullptr; // order array
+int sharedCount = 0;           // all order
+string loadedFileID = "";      // current file id
+
 int main() {
   int command = 0;
 
@@ -206,6 +211,7 @@ void task1() {
   string inputFileName = "input" + fileID + ".txt";
   string outputFileName = "sorted" + fileID + ".txt";
 
+  // read
   auto startRead = chrono::high_resolution_clock::now(); // timer start
 
   ifstream inFile(inputFileName);
@@ -257,8 +263,7 @@ void task1() {
   auto stratSort = chrono::high_resolution_clock::now();
   shellSort(orderList, totalOrders);
   auto endSort = chrono::high_resolution_clock::now();
-
-  auto sortTime = chrono::duration_cast<chrono::microseconds>(endSort - stratSort).count();
+  auto sortTime = chrono::duration_cast<chrono::nanoseconds>(endSort - stratSort).count();
 
   // write in
   auto startWrite = chrono::high_resolution_clock::now();
@@ -284,7 +289,163 @@ void task1() {
 }
 
 void task2() {
+  string inputID = getInputID();
 
+  if (loadedFileID != inputID) {
+    if (sharedOrders != nullptr) {
+      delete[] sharedOrders;
+      sharedOrders = nullptr;
+    }
+    // read
+    string fileName = "sorted" + inputID + ".txt";
+    ifstream inFile(fileName);
+
+    if (!inFile) {
+      cout << endl << "### " << fileName << " does not exist! ###" << endl << endl;
+      loadedFileID = ""; // read fail
+      return;
+    }
+
+    string header;
+    getline(inFile, header); // 跳過標題
+    int temp;
+    sharedCount = 0;
+    while (inFile >> temp >> temp >> temp >> temp) {
+      sharedCount++;
+    }
+    // 讀入資料
+    sharedOrders = new Order[sharedCount];
+    inFile.clear();
+    inFile.seekg(0);
+    getline(inFile, header);
+    for (int i = 0; i < sharedCount; i++) {
+      inFile >> sharedOrders[i].OID >> sharedOrders[i].arrival 
+            >> sharedOrders[i].duration >> sharedOrders[i].timeOut;
+    }
+    inFile.close();
+        
+    // update loaded ID
+    loadedFileID = inputID; 
+  }
+
+  // output original data
+  cout << endl << "\tOID\tArrival\tDuration\tTimeOut" << endl;
+  for (int i = 0; i < sharedCount; i++) {
+    cout << "(" << (i + 1) << ")\t" 
+         << sharedOrders[i].OID << "\t" 
+         << sharedOrders[i].arrival << "\t" 
+         << sharedOrders[i].duration << "\t\t" 
+         << sharedOrders[i].timeOut << endl;
+  }
+  cout << endl;
+  // 4. 單一佇列模擬 (所有變數皆為 Local)
+  // main section:
+  LogEntry* abortList = new LogEntry[sharedCount];
+  int abortCount = 0;
+  LogEntry* timeoutList = new LogEntry[sharedCount];
+  int timeoutCount = 0;
+  myQueue queue;
+  int chefIdleTime = 0; // 廚師閒置時間
+
+  for (int i = 0; i < sharedCount; i++) {
+    Order curr = sharedOrders[i];
+    while (!queue.isEmpty()) {
+      if (chefIdleTime > curr.arrival) {
+        break; // 廚師還在忙，無法處理佇列
+      }
+      Order qOrder;
+      queue.dequeue(qOrder); // 取出
+
+      // 檢查是否等待逾時
+      if (qOrder.timeOut < chefIdleTime) {
+        // CID=1 (進過佇列)
+        abortList[abortCount++] = {qOrder.OID, 1, chefIdleTime, chefIdleTime - qOrder.arrival};
+      } else {
+        // 製作
+        int startCook = chefIdleTime;
+        chefIdleTime += qOrder.duration;
+        // 檢查是否製作逾時
+        if (qOrder.timeOut < chefIdleTime) {
+          timeoutList[timeoutCount++] = {qOrder.OID, 1, chefIdleTime, startCook - qOrder.arrival};
+        }
+      }
+    }
+
+    // 處理新訂單 curr
+    if (queue.isFull()) {
+      abortList[abortCount++] = {curr.OID, 0, curr.arrival, 0};
+    } else if (chefIdleTime > curr.arrival) {
+      queue.enqueue(curr);
+    } else {
+      chefIdleTime = curr.arrival;
+      int startCook = chefIdleTime;
+      chefIdleTime += curr.duration;
+            
+      if (curr.timeOut < chefIdleTime) {
+        timeoutList[timeoutCount++] = {curr.OID, 1, chefIdleTime, startCook - curr.arrival};
+      }
+    }
+  }
+
+  // 處理佇列剩餘訂單
+  while (!queue.isEmpty()) {
+    Order qOrder;
+    queue.dequeue(qOrder);
+        
+    if (qOrder.timeOut < chefIdleTime) {
+      abortList[abortCount++] = {qOrder.OID, 1, chefIdleTime, chefIdleTime - qOrder.arrival};
+    } else {
+      int startCook = chefIdleTime;
+      chefIdleTime += qOrder.duration;
+      if (qOrder.timeOut < chefIdleTime) {
+        timeoutList[timeoutCount++] = {qOrder.OID, 1, chefIdleTime, startCook - qOrder.arrival};
+      }
+    }
+  }
+
+  // wirte file
+  double totalDelay = 0;
+  for (int i = 0; i < abortCount; i++) {
+    totalDelay += abortList[i].Delay;
+  }
+  for (int i = 0; i < timeoutCount; i++) {
+    totalDelay += timeoutList[i].Delay;
+  }  
+  double failRate = 0.0;
+  if (sharedCount > 0) {
+    failRate = (double)(abortCount + timeoutCount) / sharedCount * 100.0;
+  }
+  string outputFileName = "one" + loadedFileID + ".txt";
+  ofstream outFile(outputFileName);
+    
+  outFile << "\t[Abort List]" << endl;
+  outFile << "\tOID\tCID\tDelay\tAbort" << endl;
+  for (int i = 0; i < abortCount; i++) {
+    outFile << "[" << (i+1) << "]\t" 
+        << abortList[i].OID << "\t" 
+        << abortList[i].CID << "\t" 
+        << abortList[i].Delay << "\t" 
+        << abortList[i].Time << endl;
+  }
+
+  outFile << "\t[Timeout List]" << endl;
+  outFile << "\tOID\tCID\tDelay\tDeparture" << endl;
+  for (int i = 0; i < timeoutCount; i++) {
+    outFile << "[" << (i+1) << "]\t" 
+        << timeoutList[i].OID << "\t" 
+        << timeoutList[i].CID << "\t" 
+        << timeoutList[i].Delay << "\t" 
+        << timeoutList[i].Time << endl;
+  }
+
+  outFile << "[Total Delay]" << endl;
+  outFile << fixed << setprecision(0) << totalDelay << " min." << endl;
+  outFile << "[Failure Percentage]" << endl;
+  outFile << fixed << setprecision(2) << failRate << " %" << endl;
+  outFile.close();
+
+  delete[] abortList;
+  delete[] timeoutList;
 }
 
 void task3() {
