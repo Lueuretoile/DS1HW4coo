@@ -642,6 +642,7 @@ int getvalidN() {
   while (1) {
     std::cout <<"\nInput the number of queues: ";;
     std::cin >> a;
+    std::cout << std::endl;
     bool isvalid = true;
     bool isnum = true;
     for (int i = 0; i < a.length(); i++) {
